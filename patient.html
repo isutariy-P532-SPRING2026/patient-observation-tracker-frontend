@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Patient Detail</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1000px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f7fa;
+        }
+
+        nav a {
+            margin-right: 16px;
+            text-decoration: none;
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #2c3e50;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 16px 0;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0 10px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        label {
+            font-weight: bold;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 8px;
+        }
+
+        .btn-danger {
+            background: #e74c3c;
+        }
+
+        .btn-green {
+            background: #27ae60;
+        }
+
+        .btn:hover {
+            opacity: 0.85;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            text-align: left;
+            font-size: 0.85em;
+        }
+
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 0.9em;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.8em;
+            font-weight: bold;
+        }
+
+        .badge-active {
+            background: #d5f5e3;
+            color: #1e8449;
+        }
+
+        .badge-rejected {
+            background: #fadbd8;
+            color: #922b21;
+        }
+
+        .badge-meas {
+            background: #d6eaf8;
+            color: #1a5276;
+        }
+
+        .badge-cat {
+            background: #f9ebea;
+            color: #78281f;
+        }
+
+        #inference-box {
+            background: #fef9e7;
+            border: 1px solid #f39c12;
+            padding: 12px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <a href="index.html">← Patients</a>
+        <a href="catalogue.html">📚 Catalogue</a>
+        <a href="logs.html">📋 Logs</a>
+    </nav>
+
+    <h1 id="patient-name">Patient</h1>
+    <p id="patient-info" style="color:#666;"></p>
+
+    <div class="grid">
+        <!-- Record Measurement -->
+        <div class="card">
+            <h3>📏 Record Measurement</h3>
+            <label>Phenomenon Type (Quantitative)</label>
+            <select id="meas-type" onchange="loadUnitsForType()"></select>
+            <label>Amount</label>
+            <input id="meas-amount" type="number" step="0.01" placeholder="e.g. 98.6">
+            <label>Unit</label>
+            <select id="meas-unit">
+                <option value="">-- Select Unit --</option>
+            </select>
+            <label>Applicability Time (optional)</label>
+            <input id="meas-time" type="datetime-local">
+            <label>Protocol (optional)</label>
+            <select id="meas-protocol">
+                <option value="">None</option>
+            </select>
+            <button class="btn" onclick="recordMeasurement()">Record Measurement</button>
+        </div>
+
+        <!-- Record Category Observation -->
+        <div class="card">
+            <h3>🏷️ Record Category Observation</h3>
+            <label>Phenomenon Type (Qualitative)</label>
+            <select id="cat-type" onchange="loadPhenomenaForType()"></select>
+            <label>Phenomenon</label>
+            <select id="cat-phenomenon"></select>
+            <label>Presence</label>
+            <select id="cat-presence">
+                <option value="PRESENT">PRESENT</option>
+                <option value="ABSENT">ABSENT</option>
+            </select>
+            <label>Applicability Time (optional)</label>
+            <input id="cat-time" type="datetime-local">
+            <label>Protocol (optional)</label>
+            <select id="cat-protocol">
+                <option value="">None</option>
+            </select>
+            <button class="btn btn-green" onclick="recordCategory()">Record Observation</button>
+        </div>
+    </div>
+
+    <!-- Evaluate Rules -->
+    <div class="card">
+        <button class="btn btn-green" onclick="evaluateRules()">🔍 Evaluate Diagnostic Rules</button>
+        <div id="inference-box" style="display:none;"></div>
+    </div>
+
+    <!-- Observations Table -->
+    <div class="card">
+        <h3>Observations</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Phenomenon / Type</th>
+                    <th>Value</th>
+                    <th>Unit / Presence</th>
+                    <th>Protocol</th>
+                    <th>Recorded</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="obs-table"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const params = new URLSearchParams(location.search);
+        const patientId = params.get('id');
+
+        async function init() {
+            const p = await fetch(`/api/patients/${patientId}`).then(r => r.json());
+            document.getElementById('patient-name').textContent = p.fullName;
+            document.getElementById('patient-info').textContent = `DOB: ${p.dateOfBirth || 'N/A'} | Note: ${p.note || 'None'}`;
+
+            const allTypes = await fetch('/api/phenomenon-types').then(r => r.json());
+            const quantTypes = allTypes.filter(t => t.kind === 'QUANTITATIVE');
+            const qualTypes = allTypes.filter(t => t.kind === 'QUALITATIVE');
+
+            document.getElementById('meas-type').innerHTML =
+                quantTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            loadUnitsForType()
+            document.getElementById('cat-type').innerHTML =
+                qualTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+            const protocols = await fetch('/api/protocols').then(r => r.json());
+            const opts = protocols.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+            document.getElementById('meas-protocol').innerHTML = '<option value="">None</option>' + opts;
+            document.getElementById('cat-protocol').innerHTML = '<option value="">None</option>' + opts;
+
+            loadPhenomenaForType();
+            loadObservations();
+        }
+
+        async function loadPhenomenaForType() {
+            const typeId = document.getElementById('cat-type').value;
+            if (!typeId) return;
+            const phenomena = await fetch(`/api/phenomenon-types/${typeId}/phenomena`).then(r => r.json());
+            document.getElementById('cat-phenomenon').innerHTML =
+                phenomena.map(ph => `<option value="${ph.id}">${ph.name}</option>`).join('');
+        }
+
+        async function loadUnitsForType() {
+            const typeId = document.getElementById('meas-type').value;
+            const unitSelect = document.getElementById('meas-unit');
+            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
+            if (!typeId) return;
+            const type = await fetch(`/api/phenomenon-types/${typeId}`).then(r => r.json());
+            (type.allowedUnits || []).forEach(u => {
+                const opt = document.createElement('option');
+                opt.value = u; opt.textContent = u;
+                unitSelect.appendChild(opt);
+            });
+        }
+
+        async function loadObservations() {
+            const obs = await fetch(`/api/patients/${patientId}/observations`).then(r => r.json());
+            const tbody = document.getElementById('obs-table');
+            tbody.innerHTML = obs.map(o => {
+                const isMeas = o.type === 'MEASUREMENT';
+                const phenLabel = isMeas
+                    ? (o.phenomenonType?.name || '')
+                    : (o.phenomenon?.name || '');
+                const value = isMeas ? o.amount : '';
+                const unitOrPres = isMeas ? o.unit : (o.presence || '');
+                const proto = o.protocol?.name || '—';
+                const recorded = o.recordingTime ? o.recordingTime.replace('T', ' ').substring(0, 16) : '';
+                const typeBadge = isMeas
+                    ? `<span class="badge badge-meas">Measurement</span>`
+                    : `<span class="badge badge-cat">Category</span>`;
+                const statusBadge = o.status === 'ACTIVE'
+                    ? `<span class="badge badge-active">ACTIVE</span>`
+                    : `<span class="badge badge-rejected">REJECTED</span>`;
+                const rejectBtn = o.status === 'ACTIVE'
+                    ? `<button class="btn btn-danger" style="font-size:0.8em;padding:4px 8px" onclick="rejectObs(${o.id})">Reject</button>` : '';
+                return `<tr>
+          <td>${o.id}</td><td>${typeBadge}</td><td>${phenLabel}</td>
+          <td>${value}</td><td>${unitOrPres}</td><td>${proto}</td>
+          <td>${recorded}</td><td>${statusBadge}</td><td>${rejectBtn}</td>
+        </tr>`;
+            }).join('');
+        }
+
+        async function recordMeasurement() {
+            const body = {
+                patientId: parseInt(patientId),
+                phenomenonTypeId: parseInt(document.getElementById('meas-type').value),
+                amount: parseFloat(document.getElementById('meas-amount').value),
+                unit: document.getElementById('meas-unit').value,
+                applicabilityTime: document.getElementById('meas-time').value || null,
+                protocolId: document.getElementById('meas-protocol').value || null
+            };
+            const res = await fetch('/api/observations/measurement', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+            });
+            if (!res.ok) { alert(await res.text()); return; }
+            loadObservations();
+        }
+
+        async function recordCategory() {
+            const body = {
+                patientId: parseInt(patientId),
+                phenomenonId: parseInt(document.getElementById('cat-phenomenon').value),
+                presence: document.getElementById('cat-presence').value,
+                applicabilityTime: document.getElementById('cat-time').value || null,
+                protocolId: document.getElementById('cat-protocol').value || null
+            };
+            const res = await fetch('/api/observations/category', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+            });
+            if (!res.ok) { alert(await res.text()); return; }
+            loadObservations();
+        }
+
+        async function rejectObs(obsId) {
+            const reason = prompt('Rejection reason:');
+            if (!reason) return;
+            await fetch(`/api/observations/${obsId}/reject`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason })
+            });
+            loadObservations();
+        }
+
+        async function evaluateRules() {
+            const res = await fetch(`/api/patients/${patientId}/evaluate`, { method: 'POST' });
+            const inferences = await res.json();
+            const box = document.getElementById('inference-box');
+            box.style.display = 'block';
+            if (inferences.length === 0) {
+                box.innerHTML = '✅ No rules fired for current observations.';
+            } else {
+                box.innerHTML = '🔔 <strong>Inferred concepts:</strong> ' +
+                    inferences.map(i => `<strong>${i.name}</strong>`).join(', ');
+            }
+        }
+
+        init();
+    </script>
+</body>
+
+</html>

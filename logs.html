@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Logs</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f7fa;
+        }
+
+        nav a {
+            margin-right: 16px;
+            text-decoration: none;
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        h1,
+        h2 {
+            color: #2c3e50;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85em;
+        }
+
+        th {
+            background: #2c3e50;
+            color: white;
+            padding: 8px;
+            text-align: left;
+        }
+
+        td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #ecf0f1;
+            word-break: break-all;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 12px;
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <a href="index.html">🏥 Patients</a>
+        <a href="catalogue.html">📚 Catalogue</a>
+        <a href="logs.html">📋 Logs</a>
+    </nav>
+    <h1>Logs</h1>
+    <button class="btn" onclick="loadAll()">🔄 Refresh</button>
+    <div class="grid">
+        <div class="card">
+            <h2>Command Log</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Type</th>
+                        <th>User</th>
+                        <th>Time</th>
+                        <th>Payload</th>
+                    </tr>
+                </thead>
+                <tbody id="cmd-log"></tbody>
+            </table>
+        </div>
+        <div class="card">
+            <h2>Audit Log</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Event</th>
+                        <th>Patient</th>
+                        <th>Observation</th>
+                        <th>Time</th>
+                    </tr>
+                </thead>
+                <tbody id="audit-log"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        async function loadAll() {
+            const cmds = await fetch('/api/command-log').then(r => r.json());
+            document.getElementById('cmd-log').innerHTML = cmds.map(c =>
+                `<tr><td>${c.id}</td><td>${c.commandType}</td><td>${c.user}</td>
+         <td>${c.executedAt?.replace('T', ' ').substring(0, 16) || ''}</td>
+         <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${c.payload || ''}</td></tr>`
+            ).join('');
+
+            const audits = await fetch('/api/audit-log').then(r => r.json());
+            document.getElementById('audit-log').innerHTML = audits.map(a =>
+                `<tr><td>${a.id}</td><td>${a.event}</td><td>#${a.patientId}</td>
+         <td>#${a.observationId}</td>
+         <td>${a.timestamp?.replace('T', ' ').substring(0, 16) || ''}</td></tr>`
+            ).join('');
+        }
+
+        loadAll();
+    </script>
+</body>
+
+</html>

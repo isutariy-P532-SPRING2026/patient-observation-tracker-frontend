@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Catalogue</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 960px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f7fa;
+        }
+
+        nav a {
+            margin-right: 16px;
+            text-decoration: none;
+            color: #3498db;
+            font-weight: bold;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #2c3e50;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0 10px;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        label {
+            font-weight: bold;
+            color: #555;
+            font-size: 0.9em;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .btn:hover {
+            opacity: 0.85;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            padding: 8px;
+            border-bottom: 1px solid #ecf0f1;
+            font-size: 0.9em;
+        }
+
+        .tag {
+            display: inline-block;
+            background: #eaf4fb;
+            color: #1a5276;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.8em;
+            margin: 2px;
+        }
+
+        .tag-q {
+            background: #e8f8f5;
+            color: #1e8449;
+        }
+
+        .tag-qual {
+            background: #fef9e7;
+            color: #7d6608;
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <a href="index.html">🏥 Patients</a>
+        <a href="catalogue.html">📚 Catalogue</a>
+        <a href="logs.html">📋 Logs</a>
+    </nav>
+    <h1>Catalogue</h1>
+
+    <div class="grid">
+        <!-- Phenomenon Types -->
+        <div>
+            <div class="card">
+                <h3>Add Phenomenon Type</h3>
+                <label>Name</label>
+                <input id="pt-name" placeholder="e.g. Body Temperature">
+                <label>Kind</label>
+                <select id="pt-kind">
+                    <option value="QUANTITATIVE">QUANTITATIVE</option>
+                    <option value="QUALITATIVE">QUALITATIVE</option>
+                </select>
+                <label>Allowed Units (comma-separated, for QUANTITATIVE)</label>
+                <input id="pt-units" placeholder="e.g. °C,°F,K">
+                <button class="btn" onclick="createPhenomenonType()">Add Type</button>
+            </div>
+            <div class="card">
+                <h3>Phenomenon Types</h3>
+                <ul id="pt-list"></ul>
+            </div>
+            <div class="card">
+                <h3>Add Phenomenon (for QUALITATIVE type)</h3>
+                <label>Select Qualitative Type</label>
+                <select id="ph-type"></select>
+                <label>Phenomenon Name</label>
+                <input id="ph-name" placeholder="e.g. Blood Group A">
+                <button class="btn" onclick="createPhenomenon()">Add Phenomenon</button>
+            </div>
+        </div>
+
+        <!-- Protocols -->
+        <div>
+            <div class="card">
+                <h3>Add Protocol</h3>
+                <label>Name</label>
+                <input id="proto-name" placeholder="e.g. Oral Thermometry">
+                <label>Description</label>
+                <input id="proto-desc" placeholder="Brief description...">
+                <label>Accuracy Rating</label>
+                <select id="proto-acc">
+                    <option value="HIGH">HIGH</option>
+                    <option value="MEDIUM">MEDIUM</option>
+                    <option value="LOW">LOW</option>
+                </select>
+                <button class="btn" onclick="createProtocol()">Add Protocol</button>
+            </div>
+            <div class="card">
+                <h3>Protocols</h3>
+                <ul id="proto-list"></ul>
+            </div>
+        </div>
+
+        <!-- Associative Function Rules -->
+        <div class="card" style="grid-column: span 2;">
+            <h3>⚡ Diagnostic Rules (Associative Functions)</h3>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;align-items:end;">
+                <div>
+                    <label>Rule Name</label>
+                    <input id="rule-name" placeholder="e.g. Metabolic Risk">
+                </div>
+                <div>
+                    <label>Argument Types (triggers — hold Ctrl for multi)</label>
+                    <select id="rule-args" multiple style="height:80px;"></select>
+                </div>
+                <div>
+                    <label>Product Concept (inferred type)</label>
+                    <select id="rule-product"></select>
+                </div>
+                <div>
+                    <button class="btn" onclick="createRule()">Add Rule</button>
+                </div>
+            </div>
+            <ul id="rule-list" style="margin-top:16px;"></ul>
+        </div>
+    </div>
+
+    <script>
+        async function loadAll() {
+            const types = await fetch('/api/phenomenon-types').then(r => r.json());
+            const ptList = document.getElementById('pt-list');
+            ptList.innerHTML = types.map(t => {
+                const units = t.kind === 'QUANTITATIVE'
+                    ? [...(t.allowedUnits || [])].map(u => `<span class="tag tag-q">${u}</span>`).join(' ')
+                    : [...(t.phenomena || [])].map(p => `<span class="tag tag-qual">${p.name}</span>`).join(' ');
+                return `<li><strong>${t.name}</strong> <span class="tag">${t.kind}</span> ${units}</li>`;
+            }).join('');
+
+            const qualTypes = types.filter(t => t.kind === 'QUALITATIVE');
+            document.getElementById('ph-type').innerHTML =
+                qualTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+
+            const protocols = await fetch('/api/protocols').then(r => r.json());
+            document.getElementById('proto-list').innerHTML = protocols.map(p =>
+                `<li><strong>${p.name}</strong> <span class="tag">${p.accuracyRating}</span><br><small>${p.description || ''}</small></li>`
+            ).join('');
+            await loadRules(types);
+        }
+
+        async function createPhenomenonType() {
+            const name = document.getElementById('pt-name').value.trim();
+            const kind = document.getElementById('pt-kind').value;
+            const unitsRaw = document.getElementById('pt-units').value;
+            const allowedUnits = kind === 'QUANTITATIVE'
+                ? unitsRaw.split(',').map(u => u.trim()).filter(Boolean)
+                : [];
+            await fetch('/api/phenomenon-types', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, kind, allowedUnits })
+            });
+            document.getElementById('pt-name').value = '';
+            document.getElementById('pt-units').value = '';
+            loadAll();
+        }
+
+        async function createPhenomenon() {
+            const typeId = document.getElementById('ph-type').value;
+            const name = document.getElementById('ph-name').value.trim();
+            await fetch(`/api/phenomenon-types/${typeId}/phenomena`, {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            document.getElementById('ph-name').value = '';
+            loadAll();
+        }
+
+        async function loadRules(types) {
+            const rules = await fetch('/api/rules').then(r => r.json());
+
+            // Populate rule type selects
+            const allOpts = types.map(t => `<option value="${t.id}">${t.name} (${t.kind})</option>`).join('');
+            document.getElementById('rule-args').innerHTML = allOpts;
+            document.getElementById('rule-product').innerHTML =
+                '<option value="">-- Select inferred type --</option>' + allOpts;
+
+            document.getElementById('rule-list').innerHTML = rules.length === 0
+                ? '<li style="color:#999">No rules yet. Add one above.</li>'
+                : rules.map(r => `
+                    <li>
+                        <strong>${r.name}</strong> — 
+                        IF <em>${r.argumentConcepts.map(a => a.name).join(' AND ')}</em> 
+                        → INFER <strong>${r.productConcept?.name || '?'}</strong>
+                        <span class="tag" style="background:${r.active ? '#d5f5e3' : '#fadbd8'};color:${r.active ? '#1e8449' : '#922b21'}">${r.active ? 'ACTIVE' : 'INACTIVE'}</span>
+                    </li>`).join('');
+        }
+
+        async function createRule() {
+            const name = document.getElementById('rule-name').value.trim();
+            const argsSelect = document.getElementById('rule-args');
+            const argIds = [...argsSelect.selectedOptions].map(o => ({ id: parseInt(o.value) }));
+            const productId = parseInt(document.getElementById('rule-product').value);
+
+            if (!name || argIds.length === 0 || !productId) {
+                alert('Fill in rule name, select at least one argument type, and select a product type.');
+                return;
+            }
+
+            await fetch('/api/rules', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, argumentConcepts: argIds, productConcept: { id: productId }, active: true })
+            });
+            document.getElementById('rule-name').value = '';
+            loadAll();
+        }
+
+        async function createProtocol() {
+            const body = {
+                name: document.getElementById('proto-name').value,
+                description: document.getElementById('proto-desc').value,
+                accuracyRating: document.getElementById('proto-acc').value
+            };
+            await fetch('/api/protocols', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            document.getElementById('proto-name').value = '';
+            document.getElementById('proto-desc').value = '';
+            loadAll();
+        }
+
+        loadAll();
+    </script>
+</body>
+
+</html>
