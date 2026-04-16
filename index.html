@@ -126,8 +126,9 @@
     </table>
 
     <script>
+        const API = 'https://patient-observation-tracker-backend-cad5.onrender.com';
         async function loadPatients() {
-            const res = await fetch('/api/patients');
+            const res = await fetch(`${API}/api/patients`);
             const patients = await res.json();
             const tbody = document.getElementById('patient-list');
             tbody.innerHTML = patients.map(p => `
@@ -146,7 +147,7 @@
                 dateOfBirth: document.getElementById('dob').value || null,
                 note: document.getElementById('note').value
             };
-            await fetch('/api/patients', {
+            await fetch(`${API}/api/patients`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)

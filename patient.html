@@ -217,15 +217,16 @@
     </div>
 
     <script>
+        const API = 'https://patient-observation-tracker-backend-cad5.onrender.com';
         const params = new URLSearchParams(location.search);
         const patientId = params.get('id');
 
         async function init() {
-            const p = await fetch(`/api/patients/${patientId}`).then(r => r.json());
+            const p = await fetch(`${API}/api/patients/${patientId}`).then(r => r.json());
             document.getElementById('patient-name').textContent = p.fullName;
             document.getElementById('patient-info').textContent = `DOB: ${p.dateOfBirth || 'N/A'} | Note: ${p.note || 'None'}`;
 
-            const allTypes = await fetch('/api/phenomenon-types').then(r => r.json());
+            const allTypes = await fetch(`${API}/api/phenomenon-types`).then(r => r.json());
             const quantTypes = allTypes.filter(t => t.kind === 'QUANTITATIVE');
             const qualTypes = allTypes.filter(t => t.kind === 'QUALITATIVE');
 
@@ -235,7 +236,7 @@
             document.getElementById('cat-type').innerHTML =
                 qualTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 
-            const protocols = await fetch('/api/protocols').then(r => r.json());
+            const protocols = await fetch(`${API}/api/protocols`).then(r => r.json());
             const opts = protocols.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
             document.getElementById('meas-protocol').innerHTML = '<option value="">None</option>' + opts;
             document.getElementById('cat-protocol').innerHTML = '<option value="">None</option>' + opts;
@@ -247,7 +248,7 @@
         async function loadPhenomenaForType() {
             const typeId = document.getElementById('cat-type').value;
             if (!typeId) return;
-            const phenomena = await fetch(`/api/phenomenon-types/${typeId}/phenomena`).then(r => r.json());
+            const phenomena = await fetch(`${API}/api/phenomenon-types/${typeId}/phenomena`).then(r => r.json());
             document.getElementById('cat-phenomenon').innerHTML =
                 phenomena.map(ph => `<option value="${ph.id}">${ph.name}</option>`).join('');
         }
@@ -257,7 +258,7 @@
             const unitSelect = document.getElementById('meas-unit');
             unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
             if (!typeId) return;
-            const type = await fetch(`/api/phenomenon-types/${typeId}`).then(r => r.json());
+            const type = await fetch(`${API}/api/phenomenon-types/${typeId}`).then(r => r.json());
             (type.allowedUnits || []).forEach(u => {
                 const opt = document.createElement('option');
                 opt.value = u; opt.textContent = u;
@@ -266,7 +267,7 @@
         }
 
         async function loadObservations() {
-            const obs = await fetch(`/api/patients/${patientId}/observations`).then(r => r.json());
+            const obs = await fetch(`${API}/api/patients/${patientId}/observations`).then(r => r.json());
             const tbody = document.getElementById('obs-table');
             tbody.innerHTML = obs.map(o => {
                 const isMeas = o.type === 'MEASUREMENT';
@@ -302,7 +303,7 @@
                 applicabilityTime: document.getElementById('meas-time').value || null,
                 protocolId: document.getElementById('meas-protocol').value || null
             };
-            const res = await fetch('/api/observations/measurement', {
+            const res = await fetch(`${API}/api/observations/measurement`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
             });
             if (!res.ok) { alert(await res.text()); return; }
@@ -317,7 +318,7 @@
                 applicabilityTime: document.getElementById('cat-time').value || null,
                 protocolId: document.getElementById('cat-protocol').value || null
             };
-            const res = await fetch('/api/observations/category', {
+            const res = await fetch(`${API}/api/observations/category`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
             });
             if (!res.ok) { alert(await res.text()); return; }
@@ -327,7 +328,8 @@
         async function rejectObs(obsId) {
             const reason = prompt('Rejection reason:');
             if (!reason) return;
-            await fetch(`/api/observations/${obsId}/reject`, {
+
+            await fetch(`${API}/api/observations/${obsId}/reject`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ reason })
             });
@@ -335,7 +337,7 @@
         }
 
         async function evaluateRules() {
-            const res = await fetch(`/api/patients/${patientId}/evaluate`, { method: 'POST' });
+            const res = await fetch(`${API}/api/patients/${patientId}/evaluate`, { method: 'POST' });
             const inferences = await res.json();
             const box = document.getElementById('inference-box');
             box.style.display = 'block';

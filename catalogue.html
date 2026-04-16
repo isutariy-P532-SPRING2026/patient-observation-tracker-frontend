@@ -187,8 +187,9 @@
     </div>
 
     <script>
+        const API = 'https://patient-observation-tracker-backend-cad5.onrender.com';
         async function loadAll() {
-            const types = await fetch('/api/phenomenon-types').then(r => r.json());
+            const types = await fetch(`${API}/api/phenomenon-types`).then(r => r.json());
             const ptList = document.getElementById('pt-list');
             ptList.innerHTML = types.map(t => {
                 const units = t.kind === 'QUANTITATIVE'
@@ -201,7 +202,7 @@
             document.getElementById('ph-type').innerHTML =
                 qualTypes.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
 
-            const protocols = await fetch('/api/protocols').then(r => r.json());
+            const protocols = await fetch(`${API}/api/protocols`).then(r => r.json());
             document.getElementById('proto-list').innerHTML = protocols.map(p =>
                 `<li><strong>${p.name}</strong> <span class="tag">${p.accuracyRating}</span><br><small>${p.description || ''}</small></li>`
             ).join('');
@@ -215,7 +216,7 @@
             const allowedUnits = kind === 'QUANTITATIVE'
                 ? unitsRaw.split(',').map(u => u.trim()).filter(Boolean)
                 : [];
-            await fetch('/api/phenomenon-types', {
+            await fetch(`${API}/api/phenomenon-types`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, kind, allowedUnits })
             });
@@ -227,7 +228,7 @@
         async function createPhenomenon() {
             const typeId = document.getElementById('ph-type').value;
             const name = document.getElementById('ph-name').value.trim();
-            await fetch(`/api/phenomenon-types/${typeId}/phenomena`, {
+            await fetch(`${API}/api/phenomenon-types/${typeId}/phenomena`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name })
             });
@@ -236,7 +237,7 @@
         }
 
         async function loadRules(types) {
-            const rules = await fetch('/api/rules').then(r => r.json());
+            const rules = await fetch(`${API}/api/rules`).then(r => r.json());
 
             // Populate rule type selects
             const allOpts = types.map(t => `<option value="${t.id}">${t.name} (${t.kind})</option>`).join('');
@@ -266,7 +267,7 @@
                 return;
             }
 
-            await fetch('/api/rules', {
+            await fetch(`${API}/api/rules`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, argumentConcepts: argIds, productConcept: { id: productId }, active: true })
@@ -281,7 +282,7 @@
                 description: document.getElementById('proto-desc').value,
                 accuracyRating: document.getElementById('proto-acc').value
             };
-            await fetch('/api/protocols', {
+            await fetch(`${API}/api/protocols`, {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body)
             });

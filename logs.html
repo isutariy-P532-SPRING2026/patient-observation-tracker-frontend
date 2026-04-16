@@ -111,15 +111,16 @@
     </div>
 
     <script>
+        const API = 'https://patient-observation-tracker-backend-cad5.onrender.com';
         async function loadAll() {
-            const cmds = await fetch('/api/command-log').then(r => r.json());
+            const cmds = await fetch(`${API}/api/command-log`).then(r => r.json());
             document.getElementById('cmd-log').innerHTML = cmds.map(c =>
                 `<tr><td>${c.id}</td><td>${c.commandType}</td><td>${c.user}</td>
          <td>${c.executedAt?.replace('T', ' ').substring(0, 16) || ''}</td>
          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis">${c.payload || ''}</td></tr>`
             ).join('');
 
-            const audits = await fetch('/api/audit-log').then(r => r.json());
+            const audits = await fetch(`${API}/api/audit-log`).then(r => r.json());
             document.getElementById('audit-log').innerHTML = audits.map(a =>
                 `<tr><td>${a.id}</td><td>${a.event}</td><td>#${a.patientId}</td>
          <td>#${a.observationId}</td>
